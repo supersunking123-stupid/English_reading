@@ -58,9 +58,12 @@ class AnthropicClient(AIClient):
 class OpenAIClient(AIClient):
     """OpenAI GPT client."""
 
-    def __init__(self, model: str, api_key: str):
+    def __init__(self, model: str, api_key: str, base_url: Optional[str] = None):
         super().__init__(model, api_key)
-        self.client = openai.OpenAI(api_key=api_key)
+        kwargs = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+        self.client = openai.OpenAI(**kwargs)
 
     def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         messages = []
@@ -107,7 +110,7 @@ class DashScopeClient(AIClient):
             raise Exception(f"DashScope API error: {response.message}")
 
 
-def get_client(provider: str, model: str, api_key: str) -> AIClient:
+def get_client(provider: str, model: str, api_key: str, base_url: Optional[str] = None) -> AIClient:
     """
     Factory method to create appropriate AI client.
 
@@ -115,6 +118,7 @@ def get_client(provider: str, model: str, api_key: str) -> AIClient:
         provider: Provider name ('anthropic', 'openai', or 'dashscope')
         model: Model name
         api_key: API key
+        base_url: Optional base URL for API endpoint
 
     Returns:
         AIClient instance
@@ -127,7 +131,7 @@ def get_client(provider: str, model: str, api_key: str) -> AIClient:
     if provider == "anthropic":
         return AnthropicClient(model, api_key)
     elif provider == "openai":
-        return OpenAIClient(model, api_key)
+        return OpenAIClient(model, api_key, base_url)
     elif provider == "dashscope":
         return DashScopeClient(model, api_key)
     else:
@@ -178,3 +182,62 @@ def save_api_config(username: str, config: Dict[str, Any]) -> bool:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
     return True
+
+
+def fetch_available_models(provider_type: str, api_key: str, base_url: Optional[str] = None) -> list:
+    """
+    Fetch available models from API provider.
+
+    Args:
+        provider_type: Provider type ('openai', 'dashscope', 'anthropic')
+        api_key: API key
+        base_url: Optional base URL for OpenAI-compatible APIs
+
+    Returns:
+        List of model names
+    """
+    try:
+        if provider_type.lower() == 'openai':
+            # Use OpenAI API to list models
+            kwargs = {"api_key": api_key}
+            if base_url:
+                kwargs["base_url"] = base_url
+            client = openai.OpenAI(**kwargs)
+
+            models = client.models.list()
+            return [model.id for model in models.data]
+
+        elif provider_type.lower() == 'dashscope':
+            # DashScope doesn't have a public models list API
+            # Return common Qwen models
+            return [
+                'qwen-max',
+                'qwen-max-latest',
+                'qwen-plus',
+                'qwen-plus-latest',
+                'qwen-turbo',
+                'qwen-turbo-latest',
+                'qwen-long',
+                'qwen2.5-72b-instruct',
+                'qwen2.5-32b-instruct',
+                'qwen2.5-14b-instruct',
+                'qwen2.5-7b-instruct'
+            ]
+
+        elif provider_type.lower() == 'anthropic':
+            # Anthropic doesn't have a public models list API
+            # Return known Claude models
+            return [
+                'claude-3-5-sonnet-20241022',
+                'claude-3-5-haiku-20241022',
+                'claude-3-opus-20240229',
+                'claude-3-sonnet-20240229',
+                'claude-3-haiku-20240307'
+            ]
+
+        else:
+            return []
+
+    except Exception as e:
+        print(f"Error fetching models for {provider_type}: {e}")
+        return []

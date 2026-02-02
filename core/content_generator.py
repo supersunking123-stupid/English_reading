@@ -14,6 +14,7 @@ def generate_article_and_questions(
     age: int,
     lexile: int,
     client: AIClient,
+    article_type: str = "Story",
     max_retries: int = 3
 ) -> Optional[Dict[str, Any]]:
     """
@@ -24,12 +25,13 @@ def generate_article_and_questions(
         age: User's age
         lexile: User's Lexile level
         client: AI client instance
+        article_type: Type of article (Story, Science, Nature, History)
         max_retries: Maximum number of retry attempts
 
     Returns:
         Dictionary with 'article' and 'questions', or None if failed
     """
-    system_prompt, user_prompt = get_article_generation_prompt(words, age, lexile)
+    system_prompt, user_prompt = get_article_generation_prompt(words, age, lexile, article_type)
 
     for attempt in range(max_retries):
         try:

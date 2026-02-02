@@ -11,7 +11,7 @@ from config import USERS_DIR, LOG_DIR
 
 def get_user_logs(username: str) -> List[Dict[str, Any]]:
     """
-    Get all test logs for a user.
+    Get all logs (both article and test) for a user.
 
     Args:
         username: The username
@@ -31,8 +31,8 @@ def get_user_logs(username: str) -> List[Dict[str, Any]]:
         if not date_dir.is_dir():
             continue
 
-        # Iterate through log files in each date directory
-        for log_file in sorted(date_dir.glob("test_*.json"), reverse=True):
+        # Iterate through ALL log files (test_*.json and article_*.json)
+        for log_file in sorted(date_dir.glob("*.json"), reverse=True):
             try:
                 with open(log_file, 'r', encoding='utf-8') as f:
                     log_data = json.load(f)
@@ -57,44 +57,70 @@ def format_log_for_display(log_data: Dict[str, Any]) -> str:
     """
     output = []
 
-    output.append(f"# Test Log - {log_data.get('timestamp', 'Unknown')}")
-    output.append(f"\n**Score: {log_data.get('score', 'N/A')}/100**\n")
+    status = log_data.get('status', 'completed')
+    article_type = log_data.get('article_type', 'N/A')
+
+    if status == 'generated':
+        output.append(f"# Article Log - {log_data.get('timestamp', 'Unknown')}")
+        output.append(f"\n**Type:** {article_type}")
+        output.append(f"**Status:** Generated (Not yet completed)\n")
+    else:
+        output.append(f"# Test Log - {log_data.get('timestamp', 'Unknown')}")
+        output.append(f"\n**Type:** {article_type}")
+        output.append(f"**Score: {log_data.get('score', 'N/A')}/100**\n")
 
     output.append("## Article")
     output.append(log_data.get('article', 'N/A'))
 
-    output.append("\n## Questions and Answers")
+    output.append("\n## Questions")
     questions = log_data.get('questions', [])
     user_answers = log_data.get('user_answers', [])
     item_analysis = log_data.get('item_analysis', [])
 
-    for i, (q, ans) in enumerate(zip(questions, user_answers), 1):
-        output.append(f"\n### Question {i}")
-        output.append(f"**Type:** {q.get('type', 'N/A')}")
-        output.append(f"**Question:** {q.get('question', 'N/A')}")
+    # Display questions with or without answers based on status
+    if user_answers and len(user_answers) > 0:
+        # Show questions with answers (completed test)
+        for i, (q, ans) in enumerate(zip(questions, user_answers), 1):
+            output.append(f"\n### Question {i}")
+            output.append(f"**Type:** {q.get('type', 'N/A')}")
+            output.append(f"**Question:** {q.get('question', 'N/A')}")
 
-        if q.get('type') == 'multiple_choice' and 'options' in q:
-            output.append("**Options:**")
-            for opt in q['options']:
-                output.append(f"  - {opt}")
+            if q.get('type') == 'multiple_choice' and 'options' in q:
+                output.append("**Options:**")
+                for opt in q['options']:
+                    output.append(f"  - {opt}")
 
-        output.append(f"**Your Answer:** {ans}")
-        output.append(f"**Correct Answer:** {q.get('correct_answer', 'N/A')}")
+            output.append(f"**Your Answer:** {ans}")
+            output.append(f"**Correct Answer:** {q.get('correct_answer', 'N/A')}")
 
-        # Add analysis if available
-        if i - 1 < len(item_analysis):
-            analysis = item_analysis[i - 1]
-            correct = analysis.get('correct', False)
-            status = "✓ Correct" if correct else "✗ Incorrect"
-            output.append(f"**Result:** {status}")
-            if 'feedback' in analysis:
-                output.append(f"**Feedback:** {analysis['feedback']}")
+            # Add analysis if available
+            if i - 1 < len(item_analysis):
+                analysis = item_analysis[i - 1]
+                correct = analysis.get('correct', False)
+                status_mark = "✓ Correct" if correct else "✗ Incorrect"
+                output.append(f"**Result:** {status_mark}")
+                if 'feedback' in analysis:
+                    output.append(f"**Feedback:** {analysis['feedback']}")
+    else:
+        # Show questions only (generated but not completed)
+        for i, q in enumerate(questions, 1):
+            output.append(f"\n### Question {i}")
+            output.append(f"**Type:** {q.get('type', 'N/A')}")
+            output.append(f"**Question:** {q.get('question', 'N/A')}")
 
-    output.append("\n## Overall Feedback")
-    output.append(log_data.get('overall_feedback', 'N/A'))
+            if q.get('type') == 'multiple_choice' and 'options' in q:
+                output.append("**Options:**")
+                for opt in q['options']:
+                    output.append(f"  - {opt}")
 
-    output.append("\n## Suggestions")
-    output.append(log_data.get('suggestions', 'N/A'))
+    # Only show feedback and suggestions if available
+    if log_data.get('overall_feedback'):
+        output.append("\n## Overall Feedback")
+        output.append(log_data.get('overall_feedback'))
+
+    if log_data.get('suggestions'):
+        output.append("\n## Suggestions")
+        output.append(log_data.get('suggestions'))
 
     return "\n".join(output)
 

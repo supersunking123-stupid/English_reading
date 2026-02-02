@@ -1,0 +1,10 @@
+# .key_env - Global API Configuration
+# This file contains shared API keys for all users
+
+users/
+*.pyc
+__pycache__/
+.venv/
+.env
+*.log
+.DS_Store

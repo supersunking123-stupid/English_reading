@@ -131,3 +131,59 @@ def user_exists(username: str) -> bool:
         True if user exists
     """
     return (USERS_DIR / username).exists()
+
+
+def save_user_preferences(username: str, provider: str, model: str) -> bool:
+    """
+    Save user's last selected AI provider and model.
+
+    Args:
+        username: The username
+        provider: AI provider name
+        model: Model name
+
+    Returns:
+        True if saved successfully
+    """
+    user_dir = USERS_DIR / username
+
+    if not user_dir.exists():
+        return False
+
+    pref_file = user_dir / "preferences.txt"
+
+    with open(pref_file, 'w', encoding='utf-8') as f:
+        f.write(f"provider: {provider}\n")
+        f.write(f"model: {model}\n")
+
+    return True
+
+
+def load_user_preferences(username: str) -> Optional[Dict[str, str]]:
+    """
+    Load user's last selected AI provider and model.
+
+    Args:
+        username: The username
+
+    Returns:
+        Dictionary with 'provider' and 'model', or None if not found
+    """
+    user_dir = USERS_DIR / username
+    pref_file = user_dir / "preferences.txt"
+
+    if not pref_file.exists():
+        return None
+
+    prefs = {}
+    with open(pref_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip()
+                if key in ['provider', 'model']:
+                    prefs[key] = value
+
+    return prefs if prefs else None

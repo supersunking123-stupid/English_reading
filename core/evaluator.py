@@ -81,12 +81,62 @@ def validate_evaluation_response(data: Dict[str, Any]) -> bool:
     return True
 
 
+def save_article_log(
+    username: str,
+    article: str,
+    questions: List[Dict[str, Any]],
+    article_type: str = "Story"
+) -> str:
+    """
+    Save article generation log (without answers/evaluation).
+
+    Args:
+        username: The username
+        article: The article content
+        questions: List of questions
+        article_type: Type of article
+
+    Returns:
+        Timestamp ID of the saved log
+    """
+    # Create log directory with today's date
+    today = datetime.now().strftime("%Y-%m-%d")
+    log_dir = USERS_DIR / username / LOG_DIR / today
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%H-%M-%S")
+    log_file = log_dir / f"article_{timestamp}.json"
+
+    # Prepare log data
+    full_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_data = {
+        "timestamp": full_timestamp,
+        "article": article,
+        "questions": questions,
+        "article_type": article_type,
+        "status": "generated",  # Status: generated, completed
+        "user_answers": None,
+        "score": None,
+        "item_analysis": None,
+        "overall_feedback": None,
+        "suggestions": None
+    }
+
+    # Save to file
+    with open(log_file, 'w', encoding='utf-8') as f:
+        json.dump(log_data, f, indent=2, ensure_ascii=False)
+
+    return full_timestamp
+
+
 def save_test_log(
     username: str,
     article: str,
     questions: List[Dict[str, Any]],
     user_answers: List[str],
-    evaluation: Dict[str, Any]
+    evaluation: Dict[str, Any],
+    article_type: str = "Story"
 ) -> bool:
     """
     Save test log to user's log directory.
@@ -97,6 +147,7 @@ def save_test_log(
         questions: List of questions
         user_answers: List of user's answers
         evaluation: Evaluation results
+        article_type: Type of article
 
     Returns:
         True if saved successfully
@@ -115,6 +166,8 @@ def save_test_log(
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "article": article,
         "questions": questions,
+        "article_type": article_type,
+        "status": "completed",
         "user_answers": user_answers,
         "score": evaluation['score'],
         "item_analysis": evaluation['item_analysis'],
